@@ -1,0 +1,6 @@
+DEFINICION
+UNIVERSO = {"dato", "dato2", "ttt", "lol"}
+LOL = {"dato", "dato2"}
+JUAN = {"otroDato"}
+OPERACION
+JUAN * LOLA

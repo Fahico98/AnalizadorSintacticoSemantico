@@ -1,0 +1,298 @@
+
+/*______________________________________Seccion de opciones y declaraciones preliminares_____________________________________*/
+
+package AnalizadorSintacticoSemantico;
+
+import java.util.ArrayList;
+import java_cup.runtime.*;
+import java.io.*;
+
+/*________________________________________________Seccion de codigo de usuario_______________________________________________*/
+
+parser code {:
+
+    public static ArrayList<String[]> conjuntos = new ArrayList<String[]>();
+    public static String[] arrayUniverso;
+    public static int contador = 0, numeroConjuntos = 0;
+    public static String salidaParaArchivo = "";
+
+    public static void main(String[] args){
+        System.out.println("Aqui empieza todo: " + args[0]);
+        try {
+            AnalizadorSintactico analizadorSintactico = new AnalizadorSintactico(new AnalizadorLexico(new FileReader(args[0])));
+            Object result = analizadorSintactico.parse().value;
+            for(int i = 0; i < conjuntos.size(); i++){
+                System.out.print(conjuntos.get(i)[0] + " >>> ");
+                for(int j = 1; j < conjuntos.get(i).length; j++) {
+                    System.out.print(conjuntos.get(i)[j] + " ");
+                }
+                System.out.println();
+            }
+            System.out.println("\n*** Fin de resultados ***");
+        } catch (Exception ex) {
+            System.out.println("Ojo con el error: " + ex.getMessage() + ", Clase: " + ex.getClass());
+        }
+    }
+
+    public void reporteDeError(String mensaje, Object info){
+        StringBuilder sb = new StringBuilder("Error");
+        if (info instanceof java_cup.runtime.Symbol){
+            java_cup.runtime.Symbol simbolo = ((java_cup.runtime.Symbol) info);
+            if (simbolo.left >= 0) {                
+                sb.append(" in line " + (simbolo.left + 1));
+                if(simbolo.right >= 0){
+                    sb.append(", column " + (simbolo.right + 1));
+                }
+            }
+        }
+        sb.append(" : " + mensaje);
+        System.err.println(sb);
+    }
+
+    public void reporteDeErrorFatal(String mensaje, Object info) {
+        reporteDeError(mensaje, info);
+        System.exit(1);
+    }
+
+    /*
+    public static void guardarConjunto(String nombreConjunto, String elementos){
+        String buffer = elementos.replaceAll(",", "").replaceAll("\"", "");
+        String[] bufferArray = buffer.split(" ");
+        String[] conjunto = new String[bufferArray.length + 1];
+        conjunto[0] = nombreConjunto;
+        System.arraycopy(bufferArray, 0, conjunto, 1, bufferArray.length);
+        conjuntos.add(0, conjunto);
+        contador++;
+    }
+
+    public static String elementosDeConjunto(String conjunto){
+        boolean existe = false;
+        int indiceConjunto = 0;
+        String salida = "{";
+        for(int i = 0; i < conjuntos.size(); i++) {
+            existe = (conjunto == conjuntos.get(i)[0]);
+            if(existe){
+                for(int j = 1; j < conjuntos.get(i).length; j++) {
+                    salida.concat("\"" + conjuntos.get(i)[j] + "\"");
+                    if(j == conjuntos.get(i).length - 1){
+                        salida.concat("}");
+                    }else{
+                        salida.concat(",");
+                    }
+                }
+                break;
+            }
+        }
+        if(existe){
+            return(salida);
+        }else{
+            return("");
+        }
+    }
+
+    public static String complemento(String elementos){
+        String salida = "";
+        if(elementos == ""){
+            return(elementos);
+        }else{
+            salida = "{";
+            for(int i = 0; i < arrayUniverso.length; i++) {
+                boolean elementoEncontrado = (elementos.indexOf(arrayUniverso[i]) != -1) ? true : false;
+                if(!elementoEncontrado){
+                    salida.concat("\"" + arrayUniverso[i] + "\"");
+                    if(i == arrayUniverso.length - 1){
+                        salida.concat("}");
+                    }else{
+                        salida.concat(",");
+                    }
+                }
+            }
+            return salida;
+        }
+    }
+
+    public static String realizarOperacion(String elementos1, String elementos2, String operador){
+        String[] arreglo1 = elementos1.replaceAll(",", "").replaceAll("\"", "").split(" ");
+        String[] arreglo2 = elementos2.replaceAll(",", "").replaceAll("\"", "").split(" ");
+        String salida = "", buffer = "";
+        switch(operador){
+            case "&":
+                salida = "{";
+                boolean encontrado1 = false, encontrado2 = false;
+                for(int i = 0; i < arrayUniverso.length; i++) {
+                    encontrado1 = (elementos1.indexOf(arrayUniverso[i]) != -1) ? true : false;
+                    encontrado2 = (elementos2.indexOf(arrayUniverso[i]) != -1) ? true : false;
+                    if(encontrado1 || encontrado2){
+                        salida.concat("\"" + arrayUniverso[i] + "\"");
+                        if(i == arrayUniverso.length - 1){
+                            salida.concat("}");
+                        }else{
+                            salida.concat(",");
+                        }
+                    }
+                }
+                break;
+            case "$":
+                boolean encontrado = false;
+                salida = "{";
+                for(int i = 0; i < arreglo1.length; i++) {
+                    encontrado = (elementos2.indexOf(arreglo1[i]) != -1) ? true : false;
+                    if(encontrado){
+                        salida.concat("\"" + arreglo1[i] + "\"");
+                        if(i == arreglo1.length - 1){
+                            salida.concat("}");
+                        }else{
+                            salida.concat(",");
+                        }
+                    }
+                }
+                break;
+            case "/":
+                for(int i = 0; i < arreglo1.length; i++) {
+                    buffer = arreglo1[i];
+                    for (int j = 0; j < arreglo2.length; j++) {
+                        if(buffer == arreglo2[j]){
+                            arreglo1[i] = "\"";
+                        }
+                    }
+                }
+                salida = "{";
+                for (int i = 0; i < arreglo1.length; i++) {
+                    if(arreglo1[i] != "\""){
+                        salida.concat("\"" + arreglo1[i] + "\"");
+                        if(i == arreglo1.length - 1){
+                            salida.concat("}");
+                        }else{
+                            salida.concat(",");
+                        }
+                    }
+                }
+                break;
+            case "*":
+                salida = "{";
+                for(int i = 0; i < arreglo1.length; i++) {
+                    for (int j = 0; j < arreglo2.length; j++) {
+                        salida.concat("(\"" + arreglo1[i] + "\",\"" + arreglo2[j] + "\")");
+                        if(i == arreglo1.length - 1 && j == arreglo2.length - 1){
+                            salida.concat("}");
+                        }else{
+                            salida.concat(",");
+                        }
+                    }
+                }
+                break;
+        }
+        return salida;
+    }
+
+    public static boolean validarElementosDeUniverso(String elem){
+        Pattern p = Pattern.compile("[0-9a-zA-Z]+");
+        return(p.matcher(elem).matches());
+    }
+
+    public static String validarElementoDeConjunto(String elem, String columna, String linea){
+        Pattern p = Pattern.compile("[0-9a-zA-Z]+");
+        boolean existe = false;
+        for(int i = 0; i < arrayUniverso.length; i++) {
+            if(elem == arrayUniverso[i]){
+                existe = true;
+                break;
+            }
+        }
+        if(p.matcher(elem).matches()){
+            if(existe){
+                return("");
+            }else{
+                return("Línea " + linea + " Error Columna " + columna + ": elemento no definido.");
+            }
+        }else{
+            return("Línea " + linea + " Error Columna " + columna + ": elemento invalido.");
+        }
+    }
+    */
+:};
+
+/*______________________________________________Simbolos terminales y no terminales__________________________________________*/
+
+terminal                UNION,
+                        INTERSECCION,
+                        DIFERENCIA,
+                        COMPLEMENTO,
+                        PRODUCTO_CRUZ,
+                        ASIGNACION,
+                        COMA,
+                        PARENT_IZQ,
+                        PARENT_DER,
+                        LLAVE_IZQ,
+                        LLAVE_DER,
+                        COMILLAS, 
+                        DEFINICION;
+
+terminal String         OPERACION,
+                        UNIVERSO,
+                        NOMBRE_DE_CONJUNTO,
+                        ELEMENTO_DE_CONJUNTO;
+
+non terminal String     expresion,
+                        definicion_conjunto,
+                        definicion_inicial,
+                        operacion,
+                        elementos_conjunto,
+                        operador,
+                        op_conplemento;
+
+/*_________________________________________________________Gramatica_________________________________________________________*/
+
+definicion_inicial ::=  DEFINICION definicion_conjunto:def operacion:op
+                        {: System.out.println("DEFINICION\n" + def + op); :};
+
+definicion_conjunto ::= UNIVERSO ASIGNACION LLAVE_IZQ elementos_conjunto:elems LLAVE_DER definicion_conjunto:def {:
+                            RESULT = new String("UNIVERSO = {" + elems + "}\n" + def);
+                        :}
+                        | NOMBRE_DE_CONJUNTO:conj ASIGNACION LLAVE_IZQ elementos_conjunto:elems LLAVE_DER definicion_conjunto:def {:
+                            RESULT = new String(conj + " = {" + elems + "}\n" + def);
+                        :}
+                        | NOMBRE_DE_CONJUNTO:conj ASIGNACION LLAVE_IZQ elementos_conjunto:elems LLAVE_DER {:
+                            RESULT = new String(conj + " = {" + elems + "}\n");
+                        :};
+
+elementos_conjunto ::=  COMILLAS ELEMENTO_DE_CONJUNTO:elem COMILLAS COMA elementos_conjunto:elems {:
+                            RESULT = new String("\"" + elem + "\", " + elems);
+                        :}
+
+                        | COMILLAS ELEMENTO_DE_CONJUNTO:elem COMILLAS {:
+                            RESULT = new String("\"" + elem + "\"");
+                        :};
+
+operacion ::=           OPERACION expresion:exp {: RESULT = new String("OPERACION\n" + exp); :};
+
+expresion ::=           PARENT_IZQ expresion:exp operador:op NOMBRE_DE_CONJUNTO:conj PARENT_DER {:
+                            RESULT = new String(exp + op + conj);
+                        :}
+
+                        | expresion:exp operador:op NOMBRE_DE_CONJUNTO:conj {:
+                            RESULT = new String(exp + op + conj);
+                        :}
+
+                        | PARENT_IZQ expresion:exp op_conplemento PARENT_DER {:
+                            RESULT = new String(exp + "^c");
+                        :}
+
+                        | expresion:exp op_conplemento {:
+                            RESULT = new String(exp + "^c");
+                        :}
+
+                        | PARENT_IZQ NOMBRE_DE_CONJUNTO:conj PARENT_DER {:
+                            RESULT = new String(conj);
+                        :}
+
+                        | NOMBRE_DE_CONJUNTO:conj {:
+                            RESULT = new String(conj);
+                        :};
+
+operador ::=            UNION {: RESULT = new String("&"); :}
+                        | INTERSECCION {: RESULT = new String("$"); :}
+                        | DIFERENCIA {: RESULT = new String("/"); :}
+                        | PRODUCTO_CRUZ {: RESULT = new String("*"); :};
+
+op_conplemento::=       COMPLEMENTO {: RESULT = new String("^c"); :};
